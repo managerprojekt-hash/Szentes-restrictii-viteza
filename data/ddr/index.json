@@ -1,5 +1,31 @@
 {
  "versiuni": {
+  "2025-2025-01-16": {
+   "meta": {
+    "ddr": "2025",
+    "valabil": "15.12.2024 – 13.12.2025",
+    "versiune": "14.1.0",
+    "actualizare": "16.01.2025"
+   },
+   "sha": "01cccefd0e90",
+   "pdf": "2025/Anexa19_2026-11-24_01cccefd0e90.pdf",
+   "url": "https://cfr.ro/files/ddr/RO%202025/Anexa%2019%20.pdf",
+   "ni": 121,
+   "nm": 308
+  },
+  "2026-2026-11-10": {
+   "meta": {
+    "ddr": "2026",
+    "valabil": "14.12.2025 – 12.12.2026",
+    "versiune": "15.1.2",
+    "actualizare": "10.11.2026"
+   },
+   "sha": "26ca1c7a0d60",
+   "pdf": "2026/Anexa19_2026-11-24_26ca1c7a0d60.pdf",
+   "url": "https://cfr.ro/files/ddr/RO%202026/Anexa%2019%20.pdf",
+   "ni": 269,
+   "nm": 308
+  },
   "2027-2026-11-10": {
    "meta": {
     "ddr": "2027",
@@ -8,8 +34,8 @@
     "actualizare": "10.11.2026"
    },
    "sha": "6178ce318a03",
-   "pdf": "2027/Anexa 19 - 2026-11-10.pdf",
-   "url": null,
+   "pdf": "2027/Anexa19_2026-11-10_6178ce318a03.pdf",
+   "url": "https://cfr.ro/files/ddr/RO%202027/Anexa%2019%20.pdf",
    "ni": 269,
    "nm": 308
   }
