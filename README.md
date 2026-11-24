@@ -13,7 +13,7 @@ Hartă interactivă a restricțiilor de viteză din buletinele de avizare (B.A.R
 
 ## Cum se actualizează
 
-Fluxul `.github/workflows/actualizare.yml` rulează de două ori pe zi: citește pagina CFR (https://cfr.ro/ct-menu-item-116-2-2/), descarcă buletinele noi, le păstrează în ramura `arhiva` (buletinele originale, `raw/<decada>/<regionala>.docx`), le citește și actualizează datele hărții (`data/`).
+Fluxul `.github/workflows/actualizare.yml` rulează la începutul fiecărei decade (zilele 1, 11 și 21, la 00:10, cu o a doua încercare la 08:10): citește pagina CFR (https://cfr.ro/ct-menu-item-116-2-2/), descarcă buletinele noi, le păstrează în ramura `arhiva` (buletinele originale, `raw/<decada>/<regionala>.docx`), le citește și actualizează datele hărții (`data/`).
 
 Pornire manuală: **Actions → Actualizare restricții de viteză → Run workflow**; bifați „arhivele ZIP” pentru a încărca și buletinele din 2020–2025.
 

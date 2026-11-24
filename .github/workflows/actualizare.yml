@@ -2,7 +2,9 @@ name: Actualizare restricții de viteză
 
 on:
   schedule:
-    - cron: '17 5,14 * * *'      # zilnic, 08:17 și 17:17 ora României (iarna)
+    # la începutul fiecărei decade: zilele 1, 11 și 21, ora 00:10 (ora României), cu o a doua încercare la 08:10;
+    # GitHub folosește ora UTC, de aceea rularea pornește la orele UTC posibile (vară/iarnă) și pasul „Ziua” o oprește în rest
+    - cron: '10 21,22,5,6 * * *'
   workflow_dispatch:
     inputs:
       arhive:
@@ -30,9 +32,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
+      - name: Ziua (rulează doar în zilele 1, 11, 21, la 00:10 sau 08:10 ora României)
+        id: zi
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then echo "run=true" >> $GITHUB_OUTPUT; exit 0; fi
+          D=$(TZ=Europe/Bucharest date +%d); H=$(TZ=Europe/Bucharest date +%H)
+          if [[ "$D" =~ ^(01|11|21)$ && "$H" =~ ^(00|08)$ ]]; then echo "run=true" >> $GITHUB_OUTPUT; else echo "run=false" >> $GITHUB_OUTPUT; echo "Nu este începutul unei decade ($D, ora $H)."; fi
+
       - uses: actions/checkout@v4
+        if: steps.zi.outputs.run == 'true'
 
       - name: Ramura „arhiva” cu buletinele originale
+        if: steps.zi.outputs.run == 'true'
         run: |
           git config --global user.name "restrictii-bot"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -44,17 +55,20 @@ jobs:
           fi
 
       - uses: actions/setup-python@v5
+        if: steps.zi.outputs.run == 'true'
         with:
           python-version: '3.12'
 
       - name: Biblioteci
+        if: steps.zi.outputs.run == 'true'
         run: pip install python-docx
 
       - name: LibreOffice (pentru buletinele vechi .doc din arhive)
-        if: ${{ inputs.arhive }}
+        if: ${{ steps.zi.outputs.run == 'true' && inputs.arhive }}
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libreoffice-writer-nogui
 
       - name: Descarcă buletinele noi de pe cfr.ro
+        if: steps.zi.outputs.run == 'true'
         env:
           RAW_DIR: arhiva/raw
           ARCHIVE_DIR: zip_raw
@@ -62,6 +76,7 @@ jobs:
         run: python tools/fetch.py ${{ inputs.arhive && '--archives' || '' }}
 
       - name: Construiește datele hărții
+        if: steps.zi.outputs.run == 'true'
         env:
           RAW_DIR: arhiva/raw
           ARCHIVE_DIR: zip_raw
@@ -69,16 +84,24 @@ jobs:
           PERIODS="$(cat .fetched 2>/dev/null || true)" python tools/build.py . ${{ (inputs.reconstruire || github.event_name == 'push') && '--all' || '' }}
 
       - name: Salvează arhiva și datele
+        if: steps.zi.outputs.run == 'true'
         run: |
           cd arhiva
           git add -A
           if ! git diff --cached --quiet; then git commit -q -m "Buletine B.A.R. $(date -u +%F)"; git push -q origin arhiva; fi
           cd ..
           git add data
-          if ! git diff --cached --quiet; then git commit -q -m "Date restricții $(date -u +%F)"; git push -q origin HEAD:main; echo "SCHIMBAT=1" >> $GITHUB_ENV; fi
+          if ! git diff --cached --quiet; then
+            git commit -q -m "Date restricții $(date -u +%F)"
+            for i in 1 2 3; do   # if main moved meanwhile (another commit), put the data commit on top and retry
+              git pull -q --rebase -X theirs origin main && git push -q origin HEAD:main && break
+              sleep 10
+            done
+            echo "SCHIMBAT=1" >> $GITHUB_ENV
+          fi
 
       - name: Republică site-ul
-        if: env.SCHIMBAT == '1'
+        if: ${{ steps.zi.outputs.run == 'true' && env.SCHIMBAT == '1' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
