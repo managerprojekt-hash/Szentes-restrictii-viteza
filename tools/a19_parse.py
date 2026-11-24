@@ -20,11 +20,11 @@ def meta(pdf):
 
 
 def iso(d):
-    m = re.match(r'(\d{1,2})\.(\d{1,2})\.(\d{4})', d or '')
+    m = re.match(r'(\d{1,2})[./](\d{1,2})[./](\d{4})', d or '')
     return f'{m[3]}-{int(m[2]):02d}-{int(m[1]):02d}' if m else None
 
 
-DT = re.compile(r'^\d{1,2}\.\d{1,2}\.\d{4}$')
+DT = re.compile(r'^\d{1,2}[./]\d{1,2}[./]\d{4}$')
 
 
 def _row(r, k):
