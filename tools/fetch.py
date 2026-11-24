@@ -11,6 +11,7 @@ from docx import Document
 
 PAGE = 'https://cfr.ro/ct-menu-item-116-2-2/'
 RAW = os.environ.get('RAW_DIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'raw'))
+ARCH = os.environ.get('ARCHIVE_DIR')   # bulletins from the ZIP archives: not kept in the repository (cfr.ro keeps the ZIPs)
 UA = {'User-Agent': 'Mozilla/5.0 (restrictii-viteza; GitHub Actions)'}
 
 
@@ -37,25 +38,35 @@ def to_docx(path):
     return f[0] if f else None
 
 
-def file_one(path, name_hint=''):
+def file_one(path, name_hint='', raw=None, sursa=None):
     p = to_docx(path)
     if not p: print('  cannot convert', name_hint); return None
     try:
         reg, dec = meta(Document(p))
     except Exception as e:
         print('  unreadable', name_hint, e); return None
-    did = decade_id('decada ' + (dec or '')) if dec else None
+    did = decade_id(dec) if dec else None
+    if not did:       # the period may be in the page header, or only in the file / folder name
+        try:
+            from docx import Document as _D
+            hd = ' '.join(p.text for s in _D(p).sections for p in s.header.paragraphs)
+            m = re.search(r'decada\s+(.+)', hd, re.I); did = decade_id(m.group(1)) if m else None
+        except Exception: pass
+    if not did:
+        did = decade_id(os.path.basename(name_hint)) or decade_id(os.path.basename(os.path.dirname(name_hint)))
     if not did: print('  no period found in', name_hint); return None
     erata = 'erat' in name_hint.lower()
     if not reg and not erata:
         k = re.sub(r'[^a-z]', '', os.path.basename(name_hint).lower().split('-')[0].split('.')[0])
         reg = next((v for kk, v in REG.items() if kk.lower().startswith(k[:4])), None) if k else None
     if not reg and not erata: print('  no regional found in', name_hint); return None
-    d = os.path.join(RAW, did, 'erata' if erata else '')
+    raw = raw or RAW
+    d = os.path.join(raw, did, 'erata' if erata else '')
+    if sursa: os.makedirs(os.path.join(raw, did), exist_ok=True); open(os.path.join(raw, did, 'sursa.txt'), 'w').write(sursa)
     os.makedirs(d, exist_ok=True)
     dst = os.path.join(d, (os.path.basename(name_hint) if erata else REG_FILE(reg)))
     if not os.path.exists(dst):
-        shutil.copy(p, dst); print('  ', did, reg or 'erata', '->', os.path.relpath(dst, RAW))
+        shutil.copy(p, dst); print('  ', did, reg or 'erata', '->', os.path.relpath(dst, raw))
     return did
 
 
@@ -83,7 +94,7 @@ def main():
             for dp, _, fs in os.walk(tmp):
                 for f in fs:
                     if f.lower().endswith(('.docx', '.doc')) and not f.startswith('~$'):
-                        did = file_one(os.path.join(dp, f), f)
+                        did = file_one(os.path.join(dp, f), os.path.join(dp, f), ARCH, url)
                         if did: new.add(did)
                     elif f.lower().endswith('.zip'):
                         try:
@@ -94,7 +105,7 @@ def main():
                 if '_x' in dp:
                     for f in fs:
                         if f.lower().endswith(('.docx', '.doc')):
-                            did = file_one(os.path.join(dp, f), f)
+                            did = file_one(os.path.join(dp, f), os.path.join(dp, f), ARCH, url)
                             if did: new.add(did)
             shutil.rmtree(tmp, ignore_errors=True); seen.add(url)
             continue

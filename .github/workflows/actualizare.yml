@@ -57,12 +57,14 @@ jobs:
       - name: Descarcă buletinele noi de pe cfr.ro
         env:
           RAW_DIR: arhiva/raw
+          ARCHIVE_DIR: zip_raw
           FETCHED: .fetched
         run: python tools/fetch.py ${{ inputs.arhive && '--archives' || '' }}
 
       - name: Construiește datele hărții
         env:
           RAW_DIR: arhiva/raw
+          ARCHIVE_DIR: zip_raw
         run: |
           PERIODS="$(cat .fetched 2>/dev/null || true)" python tools/build.py . ${{ (inputs.reconstruire || github.event_name == 'push') && '--all' || '' }}
 

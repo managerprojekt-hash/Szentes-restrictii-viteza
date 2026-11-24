@@ -107,13 +107,15 @@ const fmt=(x,d=0)=>x==null?'—':Number(x).toLocaleString('ro-RO',{minimumFracti
 const CLS=[{k:'r1',t:'≤ 15',f:v=>v!=null&&v<=15},{k:'r2',t:'20–30',f:v=>v>15&&v<=30},{k:'r3',t:'35–50',f:v=>v>30&&v<=50},{k:'r4',t:'60–80',f:v=>v>50&&v<=80},{k:'r5',t:'> 80',f:v=>v>80},{k:'rint',t:'interdicții',f:v=>v==null}];
 const NET=[{k:'net1',f:v=>v<=50,t:'≤ 50'},{k:'net2',f:v=>v>50&&v<=80,t:'60–80'},{k:'net3',f:v=>v>80&&v<=100,t:'90–100'},{k:'net4',f:v=>v>100&&v<=120,t:'110–120'},{k:'net5',f:v=>v>120,t:'≥ 140'}];
 const DIFF={nou:'apărută',ridicat:'ridicată',aspru:'înăsprită',relax:'relaxată',same:'neschimbată'};
+const DIFFP={nou:'apărute',ridicat:'ridicate',aspru:'înăsprite',relax:'relaxate',same:'neschimbate'};
 const clsOf=v=>CLS.find(c=>c.f(v));
 const REGS=['București','Craiova','Timișoara','Cluj','Brașov','Iași','Galați','Constanța'];
 let B,IDX,A=null,C=null,map,netL,resL,on=new Set(CLS.map(c=>c.k)),cache={};
 const nk=s=>(s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
 const key=r=>r.ct==='S'||r.k0==null?['S',r.l,nk(r.loc),nk(r.ap)].join('|'):[r.ct==='P'?'P':'L',r.l,r.f,r.k0,r.k1].join('|');
 const mag=l=>/^\d/.test(l)?l[0]+'00':'—';
-async function load(id){if(!cache[id])cache[id]=await (await fetch('data/dec/'+id+'.json')).json();return cache[id]}
+async function load(id){if(!cache[id]){const buf=await (await fetch('data/dec/'+id+'.json.gz')).arrayBuffer();const u=new Uint8Array(buf);
+ const t=(u[0]===0x1f&&u[1]===0x8b)?await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(u);cache[id]=JSON.parse(t)}return cache[id]}
 function prevId(id,yrs){const ids=Object.keys(IDX.decade);if(yrs){const [y,m,d]=id.split('-');const t=(+y-yrs)+'-'+m+'-'+d;return ids.includes(t)?t:null}const i=ids.indexOf(id);return i>0?ids[i-1]:null}
 Promise.all([fetch('data/base.json').then(r=>r.json()),fetch('data/index.json').then(r=>r.json())]).then(([b,i])=>{B=b;IDX=i;init()});
 function init(){
@@ -171,7 +173,7 @@ function draw(fit){resL.clearLayers();const R=sel(),b=[];
 function stats(R){const Ln=R.filter(r=>r.ct==='L'),km=Ln.reduce((a,r)=>a+(r.L||0),0),pm=R.reduce((a,r)=>a+(r.pm||0),0);
  let h=`<div class="stat"><b>${fmt(R.length)}</b><span>restricții în selecție</span></div><div class="stat"><b>${fmt(km,1)}</b><span>km de fir restricționați</span></div><div class="stat"><b>${fmt(pm,0)}</b><span>min pierdute (însumat)</span></div>`;
  if(C){const c={nou:0,ridicat:0,aspru:0,relax:0};A.res.filter(r=>pass(Object.assign({},r,{_d:null}))).forEach(r=>{if(c[r._d]!=null)c[r._d]++});A.rid.filter(r=>pass(Object.assign({},r,{_d:null}))).forEach(()=>c.ridicat++);
-  h+=['nou','ridicat','aspru','relax'].map(k=>`<div class="stat"><b style="color:${css('--'+k)}">${fmt(c[k])}</b><span>${DIFF[k]}e</span></div>`).join('')}
+  h+=['nou','ridicat','aspru','relax'].map(k=>`<div class="stat"><b style="color:${css('--'+k)}">${fmt(c[k])}</b><span>${DIFFP[k]}</span></div>`).join('')}
  $('stats').innerHTML=h}
 function list(R){const s=[...R].sort((a,b)=>(a.v??-1)-(b.v??-1)||(b.L||0)-(a.L||0));$('lh').textContent=`${R.length} restricții, cele mai severe întâi`+(R.some(r=>!r.g)?` (${R.filter(r=>!r.g).length} fără poziție pe hartă)`:'');
  $('list').innerHTML=s.slice(0,300).map((r,i)=>`<li data-i="${i}"><span class="v" style="background:${css('--'+clsOf(r.v).k)};color:${r.v>50?'#1c2421':'#fff'}">${r.v??'—'}</span><span class="li-t">${esc(r.loc)}${r._d&&r._d!=='same'?`<span class="tag" style="background:${css('--'+r._d)}">${DIFF[r._d]}</span>`:''}<br><span class="m">L ${esc(r.l)}${r.km?' · '+esc(r.km):''}${r.L?' · '+r.L.toFixed(2)+' km':''}</span></span></li>`).join('')+(s.length>300?`<li style="cursor:default"><span></span><span class="m">… încă ${s.length-300}; restrângeți selecția</span></li>`:'');
@@ -189,12 +191,12 @@ function evol(){const g=$('fEv').value||'retea',ind=$('fInd').value;
  const ys=ids.map(val),W=360,H=170,pl=40,pb=22,mx=Math.max(1,...ys);const x=i=>pl+(ids.length<2?0:i*(W-pl-8)/(ids.length-1)),y=v=>H-pb-(v/mx)*(H-pb-8);
  let s=`<line x1="${pl}" y1="${H-pb}" x2="${W-4}" y2="${H-pb}" stroke="var(--line)"/>`;
  for(let k=0;k<=4;k++){const v=mx*k/4;s+=`<line x1="${pl}" x2="${W-4}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-dasharray="2 3"/><text x="${pl-4}" y="${y(v)+3}" text-anchor="end">${fmt(v,0)}</text>`}
- const yrs=[...new Set(ids.map(i=>i.slice(0,4)))];yrs.forEach(yr=>{const i=ids.findIndex(d=>d.startsWith(yr));s+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${yr}</text>`});
+ const yrs=[...new Set(ids.map(i=>i.slice(0,4)))];let lastx=-99;yrs.forEach(yr=>{const i=ids.findIndex(d=>d.startsWith(yr));if(x(i)-lastx<26)return;lastx=x(i);s+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${yr}</text>`});
  s+=`<polyline fill="none" stroke="var(--accent)" stroke-width="1.8" points="${ys.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`+ys.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="2.2" fill="var(--accent)"><title>${IDX.decade[ids[i]].label}: ${fmt(v,ind==='km'?1:0)}</title></circle>`).join('');
  $('chart').setAttribute('viewBox',`0 0 ${W} ${H}`);$('chart').innerHTML=s;
  // same ten-day period across the years
  const cur=$('fDec').value,[,m,d]=cur.split('-');const same=ids.filter(i=>i.slice(5)===m+'-'+d);
- $('evtab').innerHTML=`<div class="note">Aceeași decadă în fiecare an (${IDX.decade[cur].label.replace(/\d{4}$/,'')}):</div><table class="t"><tr><th>Anul</th><th>Valoare</th><th>Față de anul anterior</th></tr>`+same.map((i,k)=>{const v=val(i),p=k?val(same[k-1]):null;return `<tr><td>${i.slice(0,4)}</td><td>${fmt(v,ind==='km'?1:0)}</td><td>${p==null?'':`<span class="d ${v>p?'up':v<p?'dn':''}">${v>p?'+':''}${fmt(v-p,ind==='km'?1:0)}${p?' ('+(v>p?'+':'')+fmt(100*(v-p)/p,0)+'%)':''}</span>`}</td></tr>`}).join('')+'</table>'}
+ $('evtab').innerHTML=`<div class="note">Aceeași decadă în fiecare an (${IDX.decade[cur].label.replace(/\d{4}$/,'')}):</div><table class="t"><tr><th>Anul</th><th>Valoare</th><th>Față de anul precedent din tabel</th></tr>`+same.map((i,k)=>{const v=val(i),p=k?val(same[k-1]):null;return `<tr><td>${i.slice(0,4)}</td><td>${fmt(v,ind==='km'?1:0)}</td><td>${p==null?'':`<span class="d ${v>p?'up':v<p?'dn':''}">${v>p?'+':''}${fmt(v-p,ind==='km'?1:0)}${p?' ('+(v>p?'+':'')+fmt(100*(v-p)/p,0)+'%)':''}</span>`}</td></tr>`}).join('')+'</table>'}
 function csv(){const R=sel();const h=['decada','stare','linia','tip','firul','locul','km','lungime_km','viteza','viteza_max','aparate','observatii','regionala','sectia_TUI','min_pierdute'];
  const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';const rows=R.map(r=>[A.label,r._d?DIFF[r._d]:'',r.l,{L:'pe linie',P:'punctuală',S:'în stație'}[r.ct],r.f,r.loc,r.km,r.L,r.v??'interdicție',r.vx,r.ap,r.o,r.ro,r.s,r.pm].map(q).join(';'));
  const b=new Blob(['﻿'+h.join(';')+'\n'+rows.join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='restrictii_'+$('fDec').value+'.csv';a.click()}

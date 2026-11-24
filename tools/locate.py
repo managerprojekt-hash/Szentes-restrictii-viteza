@@ -17,6 +17,10 @@ def nkey(s):
     return re.sub(r'[^A-Z0-9]+', ' ', s).strip()
 
 
+SEAT = {'București': (44.447, 26.074), 'Craiova': (44.330, 23.794), 'Timișoara': (45.750, 21.208), 'Cluj': (46.784, 23.586),
+        'Brașov': (45.661, 25.613), 'Iași': (47.165, 27.570), 'Galați': (45.437, 28.035), 'Constanța': (44.174, 28.613)}
+
+
 class Locator:
     def __init__(self, base):
         self.B = base
@@ -89,6 +93,9 @@ class Locator:
         if near is None and r['km0'] is not None:
             a = self.at_km(r['l'], r['km0']); near = a[1] if a else None
         ro = near[3] if near else self.ro_line.get(r['l']) or self.ro_line.get(re.match(r'\d*', r['l']).group(0), r['reg'])
+        if g:   # owning branch: the nearest regional seat among the branches whose bulletins list the restriction
+            cand = [x for x in r.get('rg', []) if x in SEAT] or list(SEAT)
+            ro = min(cand, key=lambda x: dist(g[0], SEAT[x]))
         s = near[4] if near else ''
         vx = near[5] if near else None
         pm = None

@@ -26,7 +26,8 @@ def norm(s):
 
 
 def kms(s):
-    v = [int(a) + int(b) / 1000 for a, b in KM.findall(s or '')]
+    s = re.sub(r'\([^)]*\)', ' ', s or '')          # alternative chainage in brackets, e.g. '0+100 (751+009) 65+795'
+    v = [int(a) + int(b) / 1000 for a, b in KM.findall(s)]
     return v
 
 

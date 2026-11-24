@@ -3,3 +3,4 @@ arhiva/
 __pycache__/
 *.pyc
 raw/
+zip_raw/

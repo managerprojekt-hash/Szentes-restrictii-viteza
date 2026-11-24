@@ -1,9 +1,9 @@
 """Builds the map data from the bulletins kept in raw/<decade>/*.docx:
-  data/dec/<decade>.json  restrictions of the ten-day period, deduplicated, placed on the map;
+  data/dec/<decade>.json.gz  restrictions (gzip) of the ten-day period, deduplicated, placed on the map;
   data/index.json         list of the periods with statistics (network, regional branch, trunk line, line).
 Decade id: YYYY-MM-D, D = 1 (days 1-10), 2 (11-20), 3 (21-end).
 usage: python3 tools/build.py [repo_dir]   (rebuilds only the periods whose json is missing or older than the docx)"""
-import os, sys, re, json, glob, collections
+import os, sys, re, json, glob, gzip, collections
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bar_parse import parse
 from locate import Locator, dedupe
@@ -16,13 +16,18 @@ CLS = [('le15', lambda v: v is not None and v <= 15), ('20_30', lambda v: v is n
 
 
 def decade_id(text):
-    t = text.lower().replace('ş', 's').replace('ș', 's')
-    m = re.search(r'(\d{1,2})\s*[-–]\s*(\d{1,2})\s*([a-zăâîșț]+)\s*(\d{4})', text.lower())
-    if not m: return None
-    d0, mon, y = int(m.group(1)), m.group(3), int(m.group(4))
-    mi = next((i + 1 for i, l in enumerate(LUNI) if mon.startswith(l[:4])), None)
-    if mi is None: return None
-    return f'{y}-{mi:02d}-{1 if d0 <= 5 else 2 if d0 <= 15 else 3}'
+    t = (text or '').lower()
+    m = re.search(r'(\d{1,2})\s*[-–]\s*(\d{1,2})\s*([a-zăâîșşțţ]+)\.?\s*(\d{4})', t)
+    if m:
+        d0, mon, y = int(m.group(1)), m.group(3), int(m.group(4))
+        mon = mon.replace('ş', 's').replace('ș', 's')
+        mi = next((i + 1 for i, l in enumerate(LUNI) if mon[:3] == l[:3]), None)
+        if mi: return f'{y}-{mi:02d}-{1 if d0 <= 5 else 2 if d0 <= 15 else 3}'
+    m = re.search(r'(\d{1,2})\s*[-–]\s*(\d{1,2})[-.\s_]+(\d{1,2})[-.\s_]+(\d{4})', t)
+    if m:
+        d0, mi, y = int(m.group(1)), int(m.group(3)), int(m.group(4))
+        if 1 <= mi <= 12: return f'{y}-{mi:02d}-{1 if d0 <= 5 else 2 if d0 <= 15 else 3}'
+    return None
 
 
 def label(did):
@@ -70,19 +75,20 @@ def main():
     os.makedirs(os.path.join(ROOT, 'data', 'dec'), exist_ok=True)
     idx_p = os.path.join(ROOT, 'data', 'index.json')
     idx = json.load(open(idx_p)) if os.path.exists(idx_p) else {'decade': {}}
-    RAW = os.environ.get('RAW_DIR', os.path.join(ROOT, 'raw'))
+    RAWS = [os.environ.get('RAW_DIR', os.path.join(ROOT, 'raw'))] + ([os.environ['ARCHIVE_DIR']] if os.environ.get('ARCHIVE_DIR') else [])
     only = set(os.environ.get('PERIODS', '').split()) if os.environ.get('PERIODS') else None
     repo = os.environ.get('GITHUB_REPOSITORY', '')
-    for d in sorted(glob.glob(os.path.join(RAW, '*'))):
+    for d in sorted(sum((glob.glob(os.path.join(r, '*')) for r in RAWS), [])):
         if not os.path.isdir(d): continue
         did = os.path.basename(d); files = sorted(glob.glob(os.path.join(d, '*.docx')))
         if not files: continue
-        jp = os.path.join(ROOT, 'data', 'dec', did + '.json')
+        jp = os.path.join(ROOT, 'data', 'dec', did + '.json.gz')
         if os.path.exists(jp) and did in idx['decade'] and (only is None or did not in only) and '--all' not in sys.argv: continue
         R, regs = build_decade(did, files, loc)
-        json.dump(dict(id=did, label=label(did), regionale=regs, res=R), open(jp, 'w'), ensure_ascii=False, separators=(',', ':'))
+        with gzip.open(jp, 'wt', encoding='utf-8', compresslevel=9) as fz: json.dump(dict(id=did, label=label(did), regionale=regs, res=R), fz, ensure_ascii=False, separators=(',', ':'))
         idx['decade'][did] = dict(label=label(did), regionale=regs, stats=stats(R),
-                                  sursa=f'https://github.com/{repo}/tree/arhiva/raw/{did}' if repo else None)
+                                  sursa=open(os.path.join(d, 'sursa.txt')).read().strip() if os.path.exists(os.path.join(d, 'sursa.txt'))
+                                  else f'https://github.com/{repo}/tree/arhiva/raw/{did}' if repo else None)
         print(did, label(did), len(R), 'restricții,', len(regs), 'buletine')
     idx['decade'] = dict(sorted(idx['decade'].items()))
     idx['ultima'] = max(idx['decade']) if idx['decade'] else None
