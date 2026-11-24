@@ -1,17 +1,30 @@
 # Restricții de viteză pe rețeaua CFR
 
-Hartă interactivă a restricțiilor de viteză din buletinele de avizare (B.A.R.) ale celor 8 regionale CFR, actualizată decadal.
+Hartă interactivă a restricțiilor de viteză din buletinele de avizare (B.A.R.) ale celor 8 regionale CNCF „CFR” SA, cu arhivă pe decade și comparații în timp.
 
 **Harta:** https://managerprojekt-hash.github.io/Szentes-restrictii-viteza/
 
-Decada curentă: 21–30 noiembrie 2026.
+## Ce face
 
-Ce arată harta:
+- alegeți orice decadă din arhivă și o comparați cu decada anterioară, cu aceeași decadă de acum un an sau cu oricare alta: restricțiile apărute, ridicate, înăsprite și relaxate;
+- statistici pe rețea, regionale, magistrale și linii: număr de restricții, km de fir restricționați, timp pierdut estimat;
+- evoluția în timp și aceeași decadă în fiecare an (2020–2026);
+- descărcarea selecției în CSV, pentru verificare.
 
-- restricțiile pe clase de viteză (≤ 15, 20–30, 35–50, 60–80, > 80 km/h și interdicții), pe linie, punctuale și în stații;
-- rețeaua colorată după viteza maximă (călători, marfă) sau după rezerva practică de capacitate;
-- filtre pe regională, linie și secție de circulație, cu lista restricțiilor ordonate după severitate și timpul pierdut estimat.
+## Cum se actualizează
 
-Surse: buletinele B.A.R. publicate de CNCF „CFR” SA și catalogul secțiilor de circulație (TUI). Poziția restricțiilor între stații este aproximativă.
+Fluxul `.github/workflows/actualizare.yml` rulează de două ori pe zi: citește pagina CFR (https://cfr.ro/ct-menu-item-116-2-2/), descarcă buletinele noi, le păstrează în ramura `arhiva` (buletinele originale, `raw/<decada>/<regionala>.docx`), le citește și actualizează datele hărții (`data/`).
+
+Pornire manuală: **Actions → Actualizare restricții de viteză → Run workflow**; bifați „arhivele ZIP” pentru a încărca și buletinele din 2020–2025.
+
+## Structura
+
+- `index.html`: aplicația (Leaflet, fără servicii externe);
+- `data/base.json`: rețeaua (secțiile TUI, vitezele maxime, capacitățile) și punctele de calibrare km → hartă;
+- `data/index.json`: lista decadelor și statisticile;
+- `data/dec/<decada>.json`: restricțiile fiecărei decade;
+- `tools/`: descărcarea (`fetch.py`), citirea buletinelor (`bar_parse.py`), plasarea pe hartă (`locate.py`) și construirea datelor (`build.py`).
+
+Sursa datelor: buletinele B.A.R. publicate de CNCF „CFR” SA. Poziția între stații este aproximativă.
 
 Dr. ing. Iosif Szentes

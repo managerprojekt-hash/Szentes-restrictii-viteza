@@ -1,0 +1,5 @@
+arhiva/
+.fetched
+__pycache__/
+*.pyc
+raw/

@@ -1,0 +1,82 @@
+name: Actualizare restricții de viteză
+
+on:
+  schedule:
+    - cron: '17 5,14 * * *'      # zilnic, 08:17 și 17:17 ora României (iarna)
+  workflow_dispatch:
+    inputs:
+      arhive:
+        description: 'Descarcă și arhivele ZIP (decembrie 2020 – iunie 2025)'
+        type: boolean
+        default: false
+      reconstruire:
+        description: 'Reconstruiește datele tuturor decadelor'
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths: ['tools/**', '.github/workflows/actualizare.yml']
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: actualizare
+  cancel-in-progress: false
+
+jobs:
+  actualizare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ramura „arhiva” cu buletinele originale
+        run: |
+          git config --global user.name "restrictii-bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin arhiva >/dev/null; then
+            git fetch --depth=1 origin arhiva:arhiva
+            git worktree add arhiva arhiva
+          else
+            git worktree add --orphan -b arhiva arhiva
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Biblioteci
+        run: pip install python-docx
+
+      - name: LibreOffice (pentru buletinele vechi .doc din arhive)
+        if: ${{ inputs.arhive }}
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libreoffice-writer-nogui
+
+      - name: Descarcă buletinele noi de pe cfr.ro
+        env:
+          RAW_DIR: arhiva/raw
+          FETCHED: .fetched
+        run: python tools/fetch.py ${{ inputs.arhive && '--archives' || '' }}
+
+      - name: Construiește datele hărții
+        env:
+          RAW_DIR: arhiva/raw
+        run: |
+          PERIODS="$(cat .fetched 2>/dev/null || true)" python tools/build.py . ${{ (inputs.reconstruire || github.event_name == 'push') && '--all' || '' }}
+
+      - name: Salvează arhiva și datele
+        run: |
+          cd arhiva
+          git add -A
+          if ! git diff --cached --quiet; then git commit -q -m "Buletine B.A.R. $(date -u +%F)"; git push -q origin arhiva; fi
+          cd ..
+          git add data
+          if ! git diff --cached --quiet; then git commit -q -m "Date restricții $(date -u +%F)"; git push -q origin HEAD:main; echo "SCHIMBAT=1" >> $GITHUB_ENV; fi
+
+      - name: Republică site-ul
+        if: env.SCHIMBAT == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
