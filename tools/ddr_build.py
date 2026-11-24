@@ -57,7 +57,20 @@ class Gaz:
                 if c:
                     c = sorted(c, key=lambda x: (x[2] not in ('station', 'halt'), dist(near, x[:2]) if near else 0))
                     return [c[0][0], c[0][1]]
-        return None
+        # nume scrise diferit (Tintareni / Țânțăreni, Gavajdia / Gavojdia): potrivire aproximativă, în apropiere
+        import difflib
+        k = nkey(name); kv = re.sub(r'[AEIOU]', '', k)
+        if not hasattr(self, 'KV'):
+            self.KV = collections.defaultdict(list)
+            for kk in self.N: self.KV[re.sub(r'[AEIOU]', '', kk)].append(kk)
+        cand = list(self.KV.get(kv, [])) + difflib.get_close_matches(k, list(self.N), n=4, cutoff=0.84)
+        best = None
+        for kk in cand:
+            for la, lo, t in self.N[kk]:
+                d = dist(near, (la, lo)) if near else 0
+                if near and d > 180: continue
+                if best is None or d < best[0]: best = (d, [la, lo])
+        return best[1] if best else None
 
 
 class Net:
