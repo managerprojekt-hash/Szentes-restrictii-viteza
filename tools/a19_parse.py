@@ -24,6 +24,34 @@ def iso(d):
     return f'{m[3]}-{int(m[2]):02d}-{int(m[1]):02d}' if m else None
 
 
+DT = re.compile(r'^\d{1,2}\.\d{1,2}\.\d{4}$')
+
+
+def _row(r, k):
+    """one closure row, whatever the column layout of that year's annex:
+    [nr] linie | de la | până la | [total] | durata | început | sfârșit | categorie | observații (order varies)"""
+    di = [i for i, c in enumerate(r) if DT.match(c)]
+    if not di: return None
+    i0 = di[0]; i1 = di[1] if len(di) > 1 else None
+    pre = [(i, c) for i, c in enumerate(r[:i0]) if c]
+    tot = any(c.upper() in ('DA', 'TOTAL', 'TOTALĂ') for _, c in pre)
+    pre = [(i, c) for i, c in pre if c.upper() not in ('DA', 'NU')]
+    z = None
+    if pre and re.match(r'^\d+$', pre[-1][1]) and len(pre) >= 4:
+        z = int(pre[-1][1]); pre = pre[:-1]
+    if len(pre) < 3: return None
+    a, b = pre[-2][1], pre[-1][1]; l = pre[-3][1]
+    nr = pre[-4][1] if len(pre) >= 4 else str(k)
+    post = [c for c in r[(i1 if i1 is not None else i0) + 1:] if c]
+    if z is None and post and re.match(r'^\d+$', post[0]): z = int(post.pop(0))
+    cat = None
+    if post and re.match(r'^[A-D]\b', post[0]): cat = post.pop(0)[:1]
+    obs = ' '.join(post)
+    otot = bool(re.search(r'INCHIDERE\s+TOTAL|ÎNCHIDERE\s+TOTAL', obs.upper()))
+    return dict(_da=tot, _ot=otot, nr=nr, l=l.replace(' ', ''), lx=l, a=ro(a.replace('*', '')), b=ro(b.replace('*', '')), total=tot, zile=z,
+                d0=iso(r[i0]), d1=iso(r[i1]) if i1 is not None else None, cat=cat, obs=ro(obs))
+
+
 def inchideri(pdf):
     out = []
     sec2 = next(i for i, p in enumerate(pdf.pages) if 'activitatea de manevr' in (p.extract_text() or ''))
@@ -31,14 +59,13 @@ def inchideri(pdf):
         for t in p.extract_tables():
             for r in t:
                 r = [cl(c) for c in r]
-                if not r or not re.match(r'^\d+\*?$', r[0]): continue
-                if len(r) > 10:                         # extra empty columns on some pages
-                    r = r[:9] + [' '.join(x for x in r[9:] if x)]
-                if len(r) < 10: continue
-                nr, l, a, b, tot, z, d0, d1, cat, obs = r[:10]
-                out.append(dict(nr=nr, l=l.replace(' ', ''), lx=l, a=ro(a.replace('*', '')), b=ro(b.replace('*', '')),
-                                total=tot.upper().startswith('DA'), zile=int(z) if z.isdigit() else None,
-                                d0=iso(d0), d1=iso(d1), cat=cat.strip()[:1] or None, obs=ro(obs)))
+                if not r or not any(DT.match(c) for c in r): continue
+                x = _row(r, len(out) + 1)
+                if x: out.append(x)
+    col = any(x['_da'] for x in out)          # annexes with a 'închidere TOTALĂ' column; older ones say it in the remarks
+    for x in out:
+        x['total'] = x.pop('_da') if col else x['_ot']
+        x.pop('_ot', None)
     return out, sec2
 
 
@@ -130,7 +157,7 @@ def tip_manevra(r):
 def tip_inchidere(x):
     s = x['obs'].lower()
     if x['total']: base = 'total'
-    elif re.search(r'fir(ul)?\s*(i|ii|1|2)\b', s): base = 'fir'
+    elif re.search(r'fir(ul)?\s*(i|ii|1|2)\b|singur fir|un fir\b|firul deschis|pe fir ', s): base = 'fir'
     elif re.search(r'interval(ul)? orar|zilnic|ferestr|\d{1,2}[:.]\d{2}\s*[-–]\s*\d{1,2}[:.]\d{2}', s): base = 'ferestre'
     elif re.search(r'\brv\b|km/h|restric', s): base = 'viteza'
     else: base = 'partial'
