@@ -2,21 +2,20 @@
 [[nume, lat, lng, tip, alte_nume], ...].  Folosit pentru stațiile din Anexa 19 care nu apar în rețeaua TUI."""
 import json, os, sys, time, urllib.request, urllib.parse
 
-Q = """[out:json][timeout:300];
-area["ISO3166-1"="RO"][admin_level=2]->.ro;
-(node["railway"~"^(station|halt|yard|service_station|junction|crossing_station)$"](area.ro);
- way["railway"~"^(station|yard)$"](area.ro););
-out center tags;"""
-SRV = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter',
-       'https://overpass.private.coffee/api/interpreter']
+Q = """[out:json][timeout:180][bbox:43.55,20.20,48.30,29.80];
+(node["railway"~"^(station|halt|yard|service_station|junction|crossing_station)$"];
+ node["public_transport"="station"]["train"="yes"];);
+out;"""
+SRV = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter',
+       'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'statii_osm.json')
 for s in SRV:
     try:
         req = urllib.request.Request(s, data=urllib.parse.urlencode({'data': Q}).encode(),
                                      headers={'User-Agent': 'Szentes-restrictii-viteza (GitHub Actions)'})
-        d = json.load(urllib.request.urlopen(req, timeout=400)); break
+        d = json.load(urllib.request.urlopen(req, timeout=240)); print('ok', s, len(d.get('elements', []))); break
     except Exception as e:
-        print('eșec', s, e); time.sleep(20); d = None
+        print('eșec', s, repr(e)[:300]); time.sleep(5); d = None
 if not d: sys.exit(1)
 R = []
 for e in d['elements']:
