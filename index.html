@@ -73,6 +73,7 @@ svg.ch text{font:10px var(--font);fill:var(--muted)}
  <div id="tab-harta" style="display:flex;flex-direction:column;gap:10px">
   <label class="f">Regionala<select id="fReg"></select></label>
   <label class="f">Magistrala / linia<select id="fLin"></select></label>
+  <label class="f">Rețeaua colorată după<select id="fNet"><option value="v">viteza maximă, trenuri de călători</option><option value="vm">viteza maximă, trenuri de marfă</option><option value="rsz">rezerva practică de capacitate, metoda Szentes (cu închideri)</option><option value="rcfr">rezerva practică de capacitate, calcule CFR (cu închideri)</option><option value="rszrv">rezerva practică Szentes, cu închideri și cu restricțiile decadei 21–30.11.2026</option></select></label>
   <label class="f" id="lblDiff">Arată<select id="fDiff"><option value="">toate restricțiile decadei</option><option value="nou">doar cele apărute</option><option value="ridicat">doar cele ridicate</option><option value="aspru">doar cele înăsprite (viteză mai mică)</option><option value="relax">doar cele relaxate (viteză mai mare)</option><option value="same">doar cele neschimbate</option></select></label>
   <div class="row" id="fCls"></div>
   <div class="row">
@@ -109,6 +110,8 @@ const NET=[{k:'net1',f:v=>v<=50,t:'≤ 50'},{k:'net2',f:v=>v>50&&v<=80,t:'60–8
 const DIFF={nou:'apărută',ridicat:'ridicată',aspru:'înăsprită',relax:'relaxată',same:'neschimbată'};
 const DIFFP={nou:'apărute',ridicat:'ridicate',aspru:'înăsprite',relax:'relaxate',same:'neschimbate'};
 const clsOf=v=>CLS.find(c=>c.f(v));
+const RZ=[{c:'#9b1f8a',t:'< 0',f:v=>v<0},{c:'#d77fc6',t:'0–5',f:v=>v>=0&&v<5},{c:'#b8b2dd',t:'5–15',f:v=>v>=5&&v<15},{c:'#6fb3a8',t:'15–30',f:v=>v>=15&&v<30},{c:'#2a6f97',t:'≥ 30',f:v=>v>=30}];
+const capTxt=n=>n.k&&n.k[0]!=null?`<br>Capacitate practică (cu închideri): CFR ${n.k[1]} · Szentes ${n.k[3]} trenuri<br>Rezervă practică (cu închideri): CFR ${n.k[7]??'—'} · Szentes ${n.k[11]??'—'}`+(n.rv&&n.rv[0]>0?`<br>Cu restricțiile decadei 21–30.11.2026 (−${n.rv[0]} min/tren): rezervă Szentes ${n.rv[2]} · CFR ${n.rv[4]}`:''):'';
 const REGS=['București','Craiova','Timișoara','Cluj','Brașov','Iași','Galați','Constanța'];
 let B,IDX,A=null,C=null,map,netL,resL,on=new Set(CLS.map(c=>c.k)),cache={};
 const nk=s=>(s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
@@ -133,7 +136,7 @@ function init(){
  $('fReg').onchange=()=>{fillLines();draw(true)};$('fLin').onchange=()=>draw(true);$('fDiff').onchange=()=>draw(false);
  ['tL','tP','tS'].forEach(i=>$(i).onchange=()=>draw(false));
  $('fGrp').onchange=statTab;$('fInd').onchange=evol;$('fEv').onchange=evol;
- $('csv').onclick=csv;
+ $('csv').onclick=csv;$('fNet').onchange=()=>{drawNet();legend()};
  fillCmp(qs.get('c'));go();
 }
 function fillCmp(sel){const id=$('fDec').value,ids=Object.keys(IDX.decade).filter(x=>x!==id).reverse();
@@ -157,7 +160,9 @@ function fillLines(){const reg=$('fReg').value,cur=$('fLin').value;const R=A.res
 function pass(r){const reg=$('fReg').value,l=$('fLin').value,dv=$('fDiff').value;
  return (!reg||r.ro===reg)&&(!l||(l[0]==='M'?mag(r.l)===l.slice(1):r.l===l))&&on.has(clsOf(r.v).k)&&(r.ct==='L'?$('tL').checked:r.ct==='P'?$('tP').checked:$('tS').checked)&&(!dv||r._d===dv)}
 function sel(){return A.res.concat(C&&($('fDiff').value==='ridicat')?A.rid:[]).filter(pass)}
-function drawNet(){netL.clearLayers();B.net.forEach(n=>L.polyline(n.p,{color:css('--'+NET.find(c=>c.f(n.v)).k),weight:(n.t||'').toUpperCase()==='DUBLA'?3:1.6,opacity:.9}).bindTooltip(`${esc(n.n)}<br><span class="m">${n.L.toFixed(2)} km · ${n.v} km/h</span>`,{sticky:true}).addTo(netL))}
+function drawNet(){netL.clearLayers();const key=$('fNet').value,rz=key[0]==='r';
+ B.net.forEach(n=>{let c;if(rz){const v=key==='rszrv'?(n.rv?n.rv[2]:null):(n.k?n.k[key==='rsz'?11:7]:null);c=v==null?css('--net1'):RZ.find(x=>x.f(v)).c}else{const v=key==='vm'?n.vm:n.v;c=v==null?css('--net1'):css('--'+NET.find(x=>x.f(v)).k)}
+  L.polyline(n.p,{color:c,weight:(n.t||'').toUpperCase()==='DUBLA'?3:1.6,opacity:.9}).bindTooltip(`${esc(n.n)}<br><span class="m">${n.L.toFixed(2)} km · călători ${n.v} km/h${n.vm?' · marfă '+n.vm+' km/h':''}</span>${capTxt(n)}`,{sticky:true}).addTo(netL)})}
 const mid=g=>g.length===1?g[0]:[(g[0][0]+g[g.length-1][0])/2,(g[0][1]+g[g.length-1][1])/2];
 function col(r){return C&&r._d?css('--'+r._d):css('--'+clsOf(r.v).k)}
 function popup(r){const red=r.v!=null&&r.vx?Math.round(100*(1-r.v/r.vx)):null;const o=r._o;
@@ -178,7 +183,7 @@ function stats(R){const Ln=R.filter(r=>r.ct==='L'),km=Ln.reduce((a,r)=>a+(r.L||0
 function list(R){const s=[...R].sort((a,b)=>(a.v??-1)-(b.v??-1)||(b.L||0)-(a.L||0));$('lh').textContent=`${R.length} restricții, cele mai severe întâi`+(R.some(r=>!r.g)?` (${R.filter(r=>!r.g).length} fără poziție pe hartă)`:'');
  $('list').innerHTML=s.slice(0,300).map((r,i)=>`<li data-i="${i}"><span class="v" style="background:${css('--'+clsOf(r.v).k)};color:${r.v>50?'#1c2421':'#fff'}">${r.v??'—'}</span><span class="li-t">${esc(r.loc)}${r._d&&r._d!=='same'?`<span class="tag" style="background:${css('--'+r._d)}">${DIFF[r._d]}</span>`:''}<br><span class="m">L ${esc(r.l)}${r.km?' · '+esc(r.km):''}${r.L?' · '+r.L.toFixed(2)+' km':''}</span></span></li>`).join('')+(s.length>300?`<li style="cursor:default"><span></span><span class="m">… încă ${s.length-300}; restrângeți selecția</span></li>`:'');
  $('list').onclick=e=>{const li=e.target.closest('li[data-i]');if(!li)return;const r=s[+li.dataset.i];if(!r.g)return;map.fitBounds(L.latLngBounds(r.g).pad(.5),{maxZoom:14});setTimeout(()=>r._ly&&r._ly.openPopup(),250)}}
-function legend(){$('legend').innerHTML=(C?`<div class="t">Față de ${IDX.decade[$('fCmp').value].label}</div>`+Object.entries(DIFF).map(([k,t])=>`<div><span class="dt" style="background:var(--${k})"></span> ${t}</div>`).join(''):`<div class="t">Viteza restricționată (km/h)</div><div class="row">`+CLS.map(c=>`<span><span class="dt" style="background:var(--${c.k})"></span> ${c.t}</span>`).join(' ')+'</div>')+`<div class="t">Rețeaua: viteza maximă (km/h)</div><div class="row">`+NET.map(c=>`<span><span class="sw" style="background:var(--${c.k})"></span> ${c.t}</span>`).join(' ')+'</div>'}
+function legend(){$('legend').innerHTML=(C?`<div class="t">Față de ${IDX.decade[$('fCmp').value].label}</div>`+Object.entries(DIFF).map(([k,t])=>`<div><span class="dt" style="background:var(--${k})"></span> ${t}</div>`).join(''):`<div class="t">Viteza restricționată (km/h)</div><div class="row">`+CLS.map(c=>`<span><span class="dt" style="background:var(--${c.k})"></span> ${c.t}</span>`).join(' ')+'</div>')+($('fNet').value[0]==='r'?`<div class="t">Rețeaua: rezerva practică (trenuri)</div><div class="row">`+RZ.map(c=>`<span><span class="sw" style="background:${c.c}"></span> ${c.t}</span>`).join(' ')+'</div>':`<div class="t">Rețeaua: viteza maximă ${$('fNet').value==='vm'?'marfă':'călători'} (km/h)</div><div class="row">`+NET.map(c=>`<span><span class="sw" style="background:var(--${c.k})"></span> ${c.t}</span>`).join(' ')+'</div>')}
 function statTab(){const id=$('fDec').value,cid=$('fCmp').value,g=$('fGrp').value;const sa=IDX.decade[id].stats[g],sc=cid?IDX.decade[cid].stats[g]:null;
  const keys=[...new Set(Object.keys(sa).concat(sc?Object.keys(sc):[]))].sort((a,b)=>g==='regionala'?a.localeCompare(b):parseInt(a)-parseInt(b)||a.localeCompare(b));
  const dl=(a,b,d)=>b==null?'':`<br><span class="d ${a>b?'up':a<b?'dn':''}">${a>b?'+':''}${fmt(a-b,d)}</span>`;
