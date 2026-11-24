@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Restricții de circulație și manevră CFR</title>
+<link rel="stylesheet" href="vendor/leaflet.css">
+<style>
+:root{--bg:#f3f4f2;--panel:#fff;--fg:#1c2421;--muted:#5d6a65;--line:#d6dbd8;--accent:#0f5c4f;--net:#b9c4c0;--net2:#9aa8a3;
+ --t-total:#c8241c;--t-fir:#ec6a1f;--t-ferestre:#d9a21b;--t-viteza:#2a6f97;--t-partial:#6b3fa0;
+ --c-A:#7a0d12;--c-B:#d0461d;--c-C:#e8a33a;--c-D:#6fb3a8;--c-X:#8a948f;
+ --m4:#7a0d12;--m3:#c8241c;--m2:#ec6a1f;--m1:#e9b93a;--mi:#6b3fa0;--ms:#2e9e5b;--ma:#2a6f97;--m0:#8a948f;
+ --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:ui-monospace,"SFMono-Regular",Consolas,monospace;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121816;--panel:#1a2220;--fg:#e4ebe8;--muted:#98a6a1;--line:#2c3734;--accent:#5fc2ad;--net:#3a4643;--net2:#52615c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121816;--panel:#1a2220;--fg:#e4ebe8;--muted:#98a6a1;--line:#2c3734;--accent:#5fc2ad;--net:#3a4643;--net2:#52615c;color-scheme:dark}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px var(--font)}
+.app{display:grid;grid-template-columns:minmax(310px,410px) 1fr;height:100%}
+aside{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+#map{height:100%;background:var(--bg)}
+h1{font-size:19px;margin:0;font-weight:650}
+.sub{color:var(--muted);font-size:12.5px;margin-top:3px;line-height:1.4}
+.sub a,.note a{color:var(--accent)}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+select,input[type=date]{font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%;min-width:0;text-transform:none;letter-spacing:0;font-weight:400}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:12.5px;cursor:pointer;user-select:none;background:var(--bg)}
+.chip input{margin:0;accent-color:var(--accent)}
+.tabs{display:flex;border-bottom:1px solid var(--line);gap:2px}
+.tabs button{font:inherit;font-size:13.5px;background:none;border:0;border-bottom:2px solid transparent;padding:6px 10px;color:var(--muted);cursor:pointer}
+.tabs button.on{color:var(--fg);border-color:var(--accent);font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:8px}
+.stat b{display:block;font-family:var(--mono);font-size:17px;font-weight:500;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted)}
+.list ol{list-style:none;margin:0;padding:0}
+.list li{display:grid;grid-template-columns:52px 1fr;gap:8px;padding:6px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.list li:hover{background:var(--bg)}
+.v{font-family:var(--mono);font-weight:600;font-size:11.5px;color:#fff;border-radius:4px;text-align:center;padding:2px 0;align-self:start}
+.li-t{font-size:12.5px;line-height:1.35;min-width:0;overflow-wrap:anywhere}
+.m{color:var(--muted);font-family:var(--mono);font-size:11.5px}
+.note{font-size:11.5px;color:var(--muted);line-height:1.45}
+.btn{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:6px;padding:5px 10px;cursor:pointer;text-decoration:none}
+.leaflet-container{font-family:var(--font);background:var(--bg)}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--fg)}
+.leaflet-popup-content{font-size:12.5px;line-height:1.45;margin:10px 12px;min-width:250px}
+.leaflet-tooltip{background:var(--panel);color:var(--fg);border-color:var(--line)}
+.pt{border-collapse:collapse;margin:6px 0;width:100%}.pt td{padding:2px 6px 2px 0;border-bottom:1px solid var(--line);vertical-align:top}.pt td:first-child{color:var(--muted);white-space:nowrap}
+.legend{position:absolute;right:10px;bottom:10px;z-index:500;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:11.5px;display:grid;gap:4px;max-width:270px}
+.legend .t{font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-size:10.5px}
+.sw{width:18px;height:5px;border-radius:2px;display:inline-block;vertical-align:middle}.dt{width:10px;height:10px;border-radius:50%;display:inline-block;vertical-align:-1px}
+.mapwrap{position:relative;min-width:0}
+svg.ch{width:100%;height:150px;cursor:pointer}
+svg.ch text{font:10px var(--font);fill:var(--muted)}
+.st{display:inline-block;font-size:10.5px;border-radius:3px;padding:0 5px;margin-left:4px;border:1px solid var(--line);color:var(--muted)}
+.st.on{border-color:var(--accent);color:var(--accent)}
+@media (max-width:760px){.app{grid-template-columns:1fr;grid-template-rows:auto 70vh;height:auto}aside{border-right:0;border-bottom:1px solid var(--line)}.list ol{max-height:320px;overflow:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+ <div><h1>Restricții de circulație și manevră</h1>
+  <div class="sub" id="sub">Anexa 19 la Documentul de Referință al Rețelei CFR</div>
+  <div class="sub"><a href="./">← Harta restricțiilor de viteză (B.A.R.)</a></div></div>
+ <label class="f">Versiunea anexei<select id="fVer"></select></label>
+ <div class="tabs"><button data-t="circ" class="on">Circulație (închideri)</button><button data-t="man">Manevră (stații)</button></div>
+ <div id="tab-circ" style="display:flex;flex-direction:column;gap:10px">
+  <div class="two">
+   <label class="f">Arată<select id="fMode"><option value="zi">în vigoare la data</option><option value="30">începând în 30 de zile de la data</option><option value="90">începând în 90 de zile de la data</option><option value="toate">toate închiderile din anexă</option></select></label>
+   <label class="f">Data<input type="date" id="fDate"></label>
+  </div>
+  <svg class="ch" id="chart" aria-label="Închideri în vigoare pe luni"></svg>
+  <div class="two">
+   <label class="f">Regionala<select id="fReg"></select></label>
+   <label class="f">Culoarea după<select id="fCol"><option value="tip">felul închiderii</option><option value="cat">categoria (L 202/2016)</option></select></label>
+  </div>
+  <label class="f">Linia<select id="fLin"></select></label>
+  <div class="row" id="fTip"></div>
+  <div class="row" id="fCat"></div>
+  <div class="stats" id="stats"></div>
+  <div class="row"><button class="btn" id="csv">Descarcă selecția (CSV)</button><a class="btn" id="src" target="_blank" rel="noopener">Anexa 19 (PDF)</a></div>
+  <div class="list"><h2 class="m" id="lh" style="margin:4px 0"></h2><ol id="list"></ol></div>
+ </div>
+ <div id="tab-man" style="display:none;flex-direction:column;gap:10px">
+  <label class="f">Regionala<select id="mReg"></select></label>
+  <div class="row" id="mCat"></div>
+  <div class="stats" id="mstats"></div>
+  <div class="row"><button class="btn" id="mcsv">Descarcă selecția (CSV)</button></div>
+  <div class="list"><h2 class="m" id="mlh" style="margin:4px 0"></h2><ol id="mlist"></ol></div>
+ </div>
+ <p class="note" id="nota">Traseul unei închideri urmează rețeaua TUI între cele două stații din anexă, iar lungimea este suma secțiilor parcurse; unde traseul nu poate fi urmărit, linia este trasă drept între stații (marcată „aproximativ”). Stațiile sunt poziționate după rețeaua TUI și după OpenStreetMap. Felul închiderii este dedus din coloana „închidere totală” și din observații (fir, ferestre orare, restricții de viteză). Anexa este verificată automat la începutul fiecărei decade; fiecare versiune nouă este păstrată.</p>
+</aside>
+<div class="mapwrap"><div id="map"></div><div class="legend" id="legend"></div></div>
+</div>
+<script src="vendor/leaflet.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=(x,d=0)=>x==null?'—':Number(x).toLocaleString('ro-RO',{minimumFractionDigits:d,maximumFractionDigits:d});
+const REGS=['București','Craiova','Timișoara','Cluj','Brașov','Iași','Galați','Constanța'];
+const TIP={total:'închidere totală',fir:'închis un fir',ferestre:'ferestre orare / zilnice',viteza:'circulație cu restricții de viteză',partial:'închidere parțială (alte)'};
+const CAT={A:'A — ≥ 30 zile, trafic afectat ≥ 50%',B:'B — > 7 zile, trafic afectat ≥ 30%',C:'C — ≤ 7 zile, trafic afectat ≥ 50%',D:'D — ≤ 7 zile, trafic afectat ≥ 10%',X:'fără categorie'};
+const MCL=[
+ {k:'m4',t:'descompunere, atașări/detașări și SMR',f:k=>k.has('atas')&&k.has('smr')},
+ {k:'m3',t:'descompunere și atașări/detașări',f:k=>k.has('atas')},
+ {k:'mi',t:'descompunere, cu linii închise în stație',f:k=>k.has('inch')},
+ {k:'m2',t:'compunere și descompunere',f:k=>k.has('comp')},
+ {k:'m1',t:'descompunere (temporară)',f:k=>k.has('desc')},
+ {k:'ms',t:'doar schimb mijloc de remorcare (SMR)',f:k=>k.has('smr')},
+ {k:'ma',t:'alte restricții de manevră',f:k=>k.has('alte')},
+ {k:'m0',t:'fără restricții',f:k=>true}];
+const MOP={desc:'descompunere',comp:'compunere',atas:'atașări / detașări',smr:'SMR / SPT',inch:'linii închise',alte:'alte',fara:'fără restricții'};
+let B,IDX,D=null,map,netL,resL,cache={},tipOn=new Set(Object.keys(TIP)),catOn=new Set(Object.keys(CAT)),mOn=new Set(MCL.map(c=>c.k)),tab='circ';
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const dro=s=>s?s.split('-').reverse().join('.'):'—';
+const addDays=(s,n)=>{const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+const mcl=r=>MCL.find(c=>c.f(new Set(r.k)));
+Promise.all([fetch('data/base.json').then(r=>r.json()),fetch('data/ddr/index.json').then(r=>r.json())]).then(([b,i])=>{B=b;IDX=i;init()});
+async function load(id){if(!cache[id])cache[id]=await (await fetch('data/ddr/'+id+'.json')).json();return cache[id]}
+function init(){
+ const qs=new URLSearchParams(location.hash.slice(1));
+ const ids=Object.keys(IDX.versiuni).reverse();
+ $('fVer').innerHTML=ids.map(id=>{const m=IDX.versiuni[id].meta;return `<option value="${id}">DRR ${m.ddr} · v${m.versiune} · ${m.actualizare}</option>`}).join('');
+ if(qs.get('v')&&IDX.versiuni[qs.get('v')])$('fVer').value=qs.get('v');
+ $('fDate').value=qs.get('z')||today();
+ const ro='<option value="">Toată rețeaua</option>'+REGS.map(r=>`<option>${r}</option>`).join('');$('fReg').innerHTML=ro;$('mReg').innerHTML=ro;
+ $('fTip').innerHTML=Object.entries(TIP).map(([k,t])=>`<label class="chip"><input type="checkbox" data-k="${k}" checked><span class="sw" style="background:var(--t-${k})"></span>${t}</label>`).join('');
+ $('fCat').innerHTML=['A','B','C','D'].map(k=>`<label class="chip"><input type="checkbox" data-k="${k}" checked>categoria ${k}</label>`).join('');
+ $('mCat').innerHTML=MCL.map(c=>`<label class="chip"><input type="checkbox" data-k="${c.k}" checked><span class="dt" style="background:var(--${c.k})"></span>${c.t}</label>`).join('');
+ $('fTip').onchange=e=>{const k=e.target.dataset.k;e.target.checked?tipOn.add(k):tipOn.delete(k);draw(false)};
+ $('fCat').onchange=e=>{const k=e.target.dataset.k;e.target.checked?catOn.add(k):catOn.delete(k);if(k==='D'){e.target.checked?catOn.add('X'):catOn.delete('X')}draw(false)};
+ $('mCat').onchange=e=>{const k=e.target.dataset.k;e.target.checked?mOn.add(k):mOn.delete(k);draw(false)};
+ map=L.map('map',{zoomSnap:.25,preferCanvas:true,attributionControl:false}).fitBounds([[43.6,20.2],[48.3,29.7]]);
+ netL=L.layerGroup().addTo(map);resL=L.layerGroup().addTo(map);drawNet();
+ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));['circ','man'].forEach(t=>$('tab-'+t).style.display=t===tab?'flex':'none');draw(true)});
+ if(qs.get('t')==='man')document.querySelector('.tabs button[data-t=man]').click();
+ $('fVer').onchange=go;['fMode','fDate'].forEach(i=>$(i).onchange=()=>{chart();draw(false)});
+ $('fReg').onchange=()=>{fillLines();draw(true)};$('fLin').onchange=()=>draw(true);$('fCol').onchange=()=>draw(false);$('mReg').onchange=()=>draw(true);
+ $('csv').onclick=csvC;$('mcsv').onclick=csvM;
+ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{drawNet();draw(false)});
+ go();
+}
+async function go(){D=await load($('fVer').value);const m=D.meta,v=IDX.versiuni[$('fVer').value];
+ $('sub').textContent=`Anexa 19 la Documentul de Referință al Rețelei CFR ${m.ddr} — restricții de circulație (închideri de linie) și de manevră. Versiunea ${m.versiune}, actualizată la ${m.actualizare}; valabilă ${m.valabil}.`;
+ $('src').href=v.url||`https://cfr.ro/files/ddr/RO%20${m.ddr}/Anexa%2019%20.pdf`;
+ D.inchideri.forEach(x=>{x.cat=x.cat&&'ABCD'.includes(x.cat)?x.cat:'X';x.pl=x.g?x.g.map(s=>typeof s==='number'?B.net[s].p:s):null});
+ fillLines();chart();draw(true)}
+function drawNet(){netL.clearLayers();const c=css('--net');B.net.forEach(n=>L.polyline(n.p,{color:c,weight:(n.t||'').toUpperCase()==='DUBLA'?2.4:1.3,opacity:.9,interactive:false}).addTo(netL))}
+function status(x,z){if(x.d0&&x.d0>z)return 'urm';if(x.d1&&x.d1<z)return 'gata';return 'curs'}
+const STS={urm:'programată',gata:'încheiată',curs:'în vigoare'};
+function inWindow(x){const mode=$('fMode').value,z=$('fDate').value||today();if(mode==='toate')return true;
+ if(mode==='zi')return (!x.d0||x.d0<=z)&&(!x.d1||x.d1>=z);const z2=addDays(z,+mode);return x.d0&&x.d0>=z&&x.d0<=z2}
+function linesOf(R){return [...new Set(R.map(x=>x.l))].sort((a,b)=>parseInt(a)-parseInt(b)||a.localeCompare(b))}
+function fillLines(){const reg=$('fReg').value,cur=$('fLin').value;const ls=linesOf(D.inchideri.filter(x=>!reg||x.ro===reg));
+ $('fLin').innerHTML='<option value="">Toate liniile</option>'+ls.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');if(ls.includes(cur))$('fLin').value=cur}
+function selC(){const reg=$('fReg').value,l=$('fLin').value;return D.inchideri.filter(x=>inWindow(x)&&(!reg||x.ro===reg)&&(!l||x.l===l)&&tipOn.has(x.tip)&&catOn.has(x.cat))}
+function selM(){const reg=$('mReg').value;return D.manevra.filter(r=>(!reg||r.reg===reg)&&mOn.has(mcl(r).k))}
+function colC(x){return $('fCol').value==='cat'?css('--c-'+x.cat):css('--t-'+x.tip)}
+function popC(x){const z=$('fDate').value||today(),s=status(x,z);
+ return `<b>Linia ${esc(x.lx||x.l)} · ${esc(x.a||'—')} – ${esc(x.b||'—')}</b><span class="st ${s==='curs'?'on':''}">${STS[s]} la ${dro(z)}</span>
+ <table class="pt"><tr><td>Felul închiderii</td><td><span class="sw" style="background:var(--t-${x.tip})"></span> ${TIP[x.tip]}${x.total?' (coloana „închidere totală”: DA)':''}</td></tr>
+ <tr><td>Perioada</td><td>${dro(x.d0)} – ${x.d1?dro(x.d1):'nedeterminată'}</td></tr>
+ <tr><td>Durata</td><td>${x.zile!=null?fmt(x.zile)+' zile':'—'}</td></tr>
+ <tr><td>Distanța</td><td>${x.km!=null?fmt(x.km,1)+' km'+(x.aprox?' (aproximativ, în linie dreaptă)':' (pe secțiile TUI)'):'—'}${x.s&&x.s.length?' · linie '+x.s.join(' / '):''}</td></tr>
+ <tr><td>Categoria</td><td>${CAT[x.cat]}</td></tr>
+ <tr><td>Regionala</td><td>${esc(x.ro||'—')}</td></tr>
+ ${x.obs?`<tr><td>Observații</td><td>${esc(x.obs)}</td></tr>`:''}
+ <tr><td>Nr. în anexă</td><td>${esc(x.nr)}</td></tr></table>`}
+function popM(r){const c=mcl(r),n=(D.note&&D.note[r.reg]||[]).filter(t=>{const st=(r.st+' '+r.obs).match(/\*+/g)||[];return st.some(s=>t.startsWith(s)&&!t.startsWith(s+'*'))});
+ return `<b>${esc(r.st)}</b> <span class="m">· Regionala ${esc(r.reg)}</span>
+ <table class="pt"><tr><td>Restricția</td><td><span class="dt" style="background:var(--${c.k})"></span> ${esc(r.r)}</td></tr>
+ <tr><td>Operații restricționate</td><td>${r.k.map(k=>MOP[k]).join(', ')}</td></tr>
+ ${r.obs?`<tr><td>Observații</td><td>${esc(r.obs)}</td></tr>`:''}
+ ${n.map(t=>`<tr><td>Notă</td><td>${esc(t)}</td></tr>`).join('')}
+ <tr><td>Nr. în anexă</td><td>${esc(r.nr)}</td></tr></table>`}
+function draw(fit){resL.clearLayers();const b=[];
+ if(tab==='circ'){const R=selC().sort((a,b)=>(a.tip==='total'?0:1)-(b.tip==='total'?0:1)||(b.zile||0)-(a.zile||0));
+  const z=$('fDate').value||today();
+  [...R].reverse().forEach(x=>{if(!x.pl)return;const c=colC(x);x._l=[];
+   x.pl.forEach(p=>{const ly=p.length===1?L.circleMarker(p[0],{radius:6,color:c,weight:2,fillColor:c,fillOpacity:.8}):L.polyline(p,{color:c,weight:x.tip==='total'?6:4.5,opacity:.92,dashArray:x.aprox?'6 5':null});
+    ly.bindPopup(()=>popC(x),{maxWidth:360}).bindTooltip(`${esc(x.a)} – ${esc(x.b)} · ${TIP[x.tip]} · ${dro(x.d0)}–${dro(x.d1)}`,{sticky:true}).addTo(resL);x._l.push(ly);p.forEach(q=>b.push(q))})});
+  const km=R.reduce((a,x)=>a+(x.km||0),0),tot=R.filter(x=>x.tip==='total');
+  $('stats').innerHTML=`<div class="stat"><b>${R.length}</b><span>închideri</span></div><div class="stat"><b>${tot.length}</b><span>totale</span></div><div class="stat"><b>${fmt(km)}</b><span>km de linie</span></div>`;
+  $('lh').textContent=`${R.length} închideri, întâi cele totale și cele mai lungi`+(R.some(x=>!x.pl)?` (${R.filter(x=>!x.pl).length} fără poziție pe hartă)`:'');
+  $('list').innerHTML=R.map((x,i)=>`<li data-i="${i}"><span class="v" style="background:${colC(x)}">${x.zile!=null?fmt(x.zile)+' z':'—'}</span><div class="li-t"><b>${esc(x.l)}</b> ${esc(x.a)} – ${esc(x.b)}<br><span class="m">${dro(x.d0)} – ${x.d1?dro(x.d1):'…'} · ${TIP[x.tip]}${x.km!=null?' · '+fmt(x.km,1)+' km':''} · ${x.cat}</span></div></li>`).join('');
+  $('list').onclick=e=>{const li=e.target.closest('li');if(!li)return;const x=R[+li.dataset.i];if(x._l&&x._l.length){const g=L.featureGroup(x._l);map.fitBounds(g.getBounds(),{maxZoom:11,padding:[40,40]});x._l[0].openPopup()}};
+  legendC()}
+ else{const R=selM();R.forEach(r=>{if(!r.g)return;const c=css('--'+mcl(r).k);
+   r._l=L.circleMarker(r.g,{radius:6.5,color:r.k.includes('inch')?css('--fg'):'#fff',weight:r.k.includes('inch')?2:1,fillColor:c,fillOpacity:.95}).bindPopup(()=>popM(r),{maxWidth:360}).bindTooltip(esc(r.st)+' · '+esc(r.r),{sticky:true}).addTo(resL);b.push(r.g)});
+  const nl=R.filter(r=>!r.g).length;
+  $('mstats').innerHTML=`<div class="stat"><b>${R.length}</b><span>stații</span></div><div class="stat"><b>${R.filter(r=>r.k.includes('desc')).length}</b><span>cu descompunere restricționată</span></div><div class="stat"><b>${R.filter(r=>r.k.includes('atas')).length}</b><span>cu atașări / detașări restricționate</span></div>`;
+  $('mlh').textContent=`${R.length} stații cu restricții de manevră`+(nl?` (${nl} fără poziție pe hartă)`:'');
+  $('mlist').innerHTML=R.map((r,i)=>`<li data-i="${i}"><span class="v" style="background:var(--${mcl(r).k})">${esc(r.reg.slice(0,3))}</span><div class="li-t"><b>${esc(r.st)}</b>${r.g?'':' <span class="m">(fără poziție)</span>'}<br><span class="m">${esc(r.r)}${r.obs?' · '+esc(r.obs):''}</span></div></li>`).join('');
+  $('mlist').onclick=e=>{const li=e.target.closest('li');if(!li)return;const r=R[+li.dataset.i];if(r._l){map.setView(r.g,11);r._l.openPopup()}};
+  legendM()}
+ if(fit&&b.length)map.fitBounds(L.latLngBounds(b),{maxZoom:10,padding:[30,30]})}
+function legendC(){const cat=$('fCol').value==='cat';
+ $('legend').innerHTML=(cat?`<div class="t">Categoria restricției (L 202/2016)</div>`+Object.entries(CAT).filter(([k])=>k!=='X').map(([k,t])=>`<div><span class="sw" style="background:var(--c-${k})"></span> ${t}</div>`).join(''):`<div class="t">Felul închiderii</div>`+Object.entries(TIP).map(([k,t])=>`<div><span class="sw" style="background:var(--t-${k})"></span> ${t}</div>`).join(''))+`<div class="m">linie întreruptă: traseu aproximativ</div>`}
+function legendM(){$('legend').innerHTML=`<div class="t">Operații de manevră restricționate</div>`+MCL.map(c=>`<div><span class="dt" style="background:var(--${c.k})"></span> ${c.t}</div>`).join('')+`<div class="m">cerc cu contur închis: linii închise în stație</div>`}
+function chart(){if(!D)return;const X=D.inchideri;const ds=X.flatMap(x=>[x.d0,x.d1]).filter(Boolean).sort();if(!ds.length){$('chart').innerHTML='';return}
+ const y0=+ds[0].slice(0,4),y1=Math.min(+ds[ds.length-1].slice(0,4),y0+6);const M=[];for(let y=y0;y<=y1;y++)for(let m=1;m<=12;m++)M.push(`${y}-${String(m).padStart(2,'0')}`);
+ const val=M.map(mo=>{const a=mo+'-01',e=mo+'-31';const R=X.filter(x=>(!x.d0||x.d0<=e)&&(!x.d1||x.d1>=a));return {mo,n:R.length,t:R.filter(x=>x.tip==='total').length}});
+ const W=$('chart').clientWidth||360,H=150,pl=26,pb=18,mx=Math.max(...val.map(v=>v.n),1),bw=(W-pl-4)/M.length,z=($('fDate').value||today()).slice(0,7);
+ let s=`<text x="${pl}" y="10">închideri în vigoare pe luni (roșu: totale) · clic: alege luna</text>`;
+ [0,.5,1].forEach(f=>{const y=H-pb-(H-pb-16)*f;s+=`<line x1="${pl}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl-4}" y="${y+3}" text-anchor="end">${Math.round(mx*f)}</text>`});
+ val.forEach((v,i)=>{const x=pl+i*bw,h=(H-pb-16)*v.n/mx,ht=(H-pb-16)*v.t/mx,on=v.mo===z;
+  s+=`<g data-m="${v.mo}"><rect x="${x}" y="16" width="${bw}" height="${H-pb-16}" fill="transparent"/><rect x="${x+.5}" y="${H-pb-h}" width="${Math.max(bw-1,1)}" height="${h}" fill="${on?'var(--accent)':'var(--t-fir)'}" opacity="${on?1:.55}"/><rect x="${x+.5}" y="${H-pb-ht}" width="${Math.max(bw-1,1)}" height="${ht}" fill="${on?'var(--accent)':'var(--t-total)'}"/><title>${v.mo}: ${v.n} închideri, ${v.t} totale</title></g>`;
+  if(v.mo.endsWith('-01'))s+=`<text x="${x}" y="${H-4}">${v.mo.slice(0,4)}</text>`});
+ $('chart').setAttribute('viewBox',`0 0 ${W} ${H}`);$('chart').innerHTML=s;
+ $('chart').onclick=e=>{const g=e.target.closest('g[data-m]');if(!g)return;const mo=g.dataset.m,t=today();$('fDate').value=t.startsWith(mo)?t:mo+'-15';$('fMode').value='zi';chart();draw(false)}}
+function dl(name,rows){const t='﻿'+rows.map(r=>r.map(v=>{v=String(v??'');return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download=name;a.click()}
+function csvC(){const z=$('fDate').value||today();dl(`inchideri_${D.id}.csv`,[['nr','linia','de_la','pana_la','fel','inchidere_totala','data_inceput','data_sfarsit','zile','categoria','km','km_aproximativ','regionala','stare_la_'+z,'observatii']].concat(selC().map(x=>[x.nr,x.lx||x.l,x.a,x.b,TIP[x.tip],x.total?'DA':'',dro(x.d0),dro(x.d1),x.zile,x.cat==='X'?'':x.cat,x.km!=null?String(x.km).replace('.',','):'',x.aprox?'da':'',x.ro,STS[status(x,z)],x.obs])))}
+function csvM(){dl(`manevra_${D.id}.csv`,[['nr','regionala','statia','restrictia','operatii','observatii','lat','lng']].concat(selM().map(r=>[r.nr,r.reg,r.st,r.r,r.k.map(k=>MOP[k]).join(', '),r.obs,r.g?r.g[0]:'',r.g?r.g[1]:''])))}
+window.addEventListener('resize',()=>chart());
+</script>
+</body>
+</html>
