@@ -71,7 +71,10 @@ def build_decade(did, files, loc):
 
 
 def main():
-    base = json.load(open(os.path.join(ROOT, 'data', 'base.json'))); loc = Locator(base)
+    base = json.load(open(os.path.join(ROOT, 'data', 'base.json')))
+    rp = os.path.join(ROOT, 'data', 'regionale.json')
+    if os.path.exists(rp): base['_regionale'] = json.load(open(rp))
+    loc = Locator(base)
     os.makedirs(os.path.join(ROOT, 'data', 'dec'), exist_ok=True)
     idx_p = os.path.join(ROOT, 'data', 'index.json')
     idx = json.load(open(idx_p)) if os.path.exists(idx_p) else {'decade': {}}

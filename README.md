@@ -20,6 +20,7 @@ Pornire manuală: **Actions → Actualizare restricții de viteză → Run workf
 ## Structura
 
 - `index.html`: aplicația (Leaflet, fără servicii externe);
+- `data/regionale.json`: frontierele regionalelor (stațiile și secțiile din calculele de capacitate ale fiecărei regionale), pentru atribuirea restricțiilor;
 - `data/base.json`: rețeaua (secțiile TUI, vitezele maxime, capacitățile) și punctele de calibrare km → hartă;
 - `data/index.json`: lista decadelor și statisticile;
 - `data/dec/<decada>.json`: restricțiile fiecărei decade;

@@ -33,6 +33,9 @@ class Locator:
             w = self.words(loc)
             for k in range(min(4, len(w)), 0, -1):
                 self.st.setdefault(' '.join(w[:k]), g)
+        self.RG = None
+        rp = base.get('_regionale')
+        if rp: self.RG = rp
         self.cal = collections.defaultdict(list)        # line -> [(km, lat, lng, ro, s, vx)]
         for c in base['cal']: self.cal[c[0]].append(tuple(c[1:]))
         for l in self.cal: self.cal[l].sort(key=lambda x: x[0])
@@ -74,6 +77,40 @@ class Locator:
                     if kk.startswith(key + ' ') and k >= 2: return g
         return None
 
+    def st_branches(self, text):
+        w = [x for x in self.words(text) if x not in ('H',)]
+        for k in range(min(5, len(w)), 0, -1):
+            v = self.RG['st'].get(' '.join(w[:k]))
+            if v: return ' '.join(w[:k]), v
+        for k in range(min(4, len(w)), 1, -1):          # 'BUCURESTI NORD' -> 'BUCURESTI NORD GR A'
+            key = ' '.join(w[:k])
+            hits = [kk for kk in self.RG['st'] if kk.startswith(key + ' ')]
+            if hits:
+                v = sorted(set(b for kk in hits for b in self.RG['st'][kk]))
+                return hits[0], v
+        return None, None
+
+    def branch(self, r, g):
+        """owning regional branch from the capacity workbooks: section 'A - B' or station; frontier -> nearest seat"""
+        if not self.RG: return None
+        parts = [p for p in re.split(r'\s+-\s+|\s+–\s+', r['loc']) if p.strip()]
+        cand = None
+        if len(parts) >= 2:
+            ka, va = self.st_branches(parts[0]); kb, vb = self.st_branches(parts[1])
+            if ka and kb:
+                b = self.RG['sec'].get(ka + '|' + kb)
+                if b: return b
+            if va and vb:
+                common = sorted(set(va) & set(vb)); cand = common or sorted(set(va) | set(vb))
+            else: cand = va or vb
+        else:
+            _, cand = self.st_branches(r['loc'])
+        if not cand: return None
+        if len(cand) == 1: return cand[0]
+        if g: return min(cand, key=lambda x: dist(g[0], SEAT[x]) if x in SEAT else 1e9)
+        rg = [x for x in cand if x in r.get('rg', [])]
+        return rg[0] if rg else cand[0]
+
     def place(self, r):
         g = None; near = None
         if r['ct'] in ('L', 'P') and r['km0'] is not None:
@@ -93,7 +130,9 @@ class Locator:
         if near is None and r['km0'] is not None:
             a = self.at_km(r['l'], r['km0']); near = a[1] if a else None
         ro = near[3] if near else self.ro_line.get(r['l']) or self.ro_line.get(re.match(r'\d*', r['l']).group(0), r['reg'])
-        if g:   # owning branch: the nearest regional seat among the branches whose bulletins list the restriction
+        ro2 = self.branch(r, g)
+        if ro2: ro = ro2
+        elif g:   # fallback: the nearest regional seat among the branches whose bulletins list the restriction
             cand = [x for x in r.get('rg', []) if x in SEAT] or list(SEAT)
             ro = min(cand, key=lambda x: dist(g[0], SEAT[x]))
         s = near[4] if near else ''
