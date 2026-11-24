@@ -29,3 +29,12 @@ Pornire manuală: **Actions → Actualizare restricții de viteză → Run workf
 Sursa datelor: buletinele B.A.R. publicate de CNCF „CFR” SA. Poziția între stații este aproximativă.
 
 Dr. ing. Iosif Szentes
+
+## Închideri de linie și restricții de manevră (Anexa 19 DRR)
+
+Pagina `ddr.html` arată Anexa 19 a Documentului de Referință al Rețelei CFR („Secții și stații cu restricții de capacitate și manevră”):
+
+- **Circulație** – fiecare închidere de secție este desenată pe traseul ei (secțiile TUI dintre cele două stații), colorată după felul închiderii (totală, un fir, ferestre orare, restricții de viteză, alte) sau după categoria din Legea 202/2016 (A–D). Fereastra fiecărei închideri arată linia, secția, perioada, durata, distanța, categoria și observațiile. Se poate alege data la care se văd închiderile în vigoare, sau cele care încep în următoarele 30/90 de zile; graficul arată numărul de închideri pe luni.
+- **Manevră** – stațiile cu restricții de manevră, colorate după operațiile restricționate (descompunere temporară, compunere, atașări/detașări, schimb mijloc de remorcare, linii închise), cu observațiile și notele regionalei.
+
+Anexa se verifică automat la aceeași rulare ca buletinele (zilele 1, 11, 21): `tools/ddr_fetch.py` descarcă PDF-ul de pe cfr.ro, îl păstrează în ramura `arhiva` (`ddr/<an>/`) numai dacă s-a schimbat, iar `tools/ddr_build.py` produce `data/ddr/<versiune>.json`. Toate versiunile rămân disponibile în selectorul „Versiunea anexei”. Stațiile care nu apar în rețeaua TUI sunt poziționate după OpenStreetMap (`data/statii_osm.json`, `tools/statii_osm.py`).

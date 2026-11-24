@@ -61,7 +61,7 @@ jobs:
 
       - name: Biblioteci
         if: steps.zi.outputs.run == 'true'
-        run: pip install python-docx
+        run: pip install python-docx pdfplumber
 
       - name: LibreOffice (pentru buletinele vechi .doc din arhive)
         if: ${{ steps.zi.outputs.run == 'true' && inputs.arhive }}
@@ -83,12 +83,20 @@ jobs:
         run: |
           PERIODS="$(cat .fetched 2>/dev/null || true)" python tools/build.py . ${{ (inputs.reconstruire || github.event_name == 'push') && '--all' || '' }}
 
+      - name: Anexa 19 DRR (restricții de capacitate și manevră)
+        if: steps.zi.outputs.run == 'true'
+        env:
+          DDR_DIR: arhiva/ddr
+        run: |
+          python tools/ddr_fetch.py || true
+          python tools/ddr_build.py ${{ (inputs.reconstruire || github.event_name == 'push') && '--all' || '' }}
+
       - name: Salvează arhiva și datele
         if: steps.zi.outputs.run == 'true'
         run: |
           cd arhiva
           git add -A
-          if ! git diff --cached --quiet; then git commit -q -m "Buletine B.A.R. $(date -u +%F)"; git push -q origin arhiva; fi
+          if ! git diff --cached --quiet; then git commit -q -m "Buletine B.A.R. și Anexa 19 DRR $(date -u +%F)"; git push -q origin arhiva; fi
           cd ..
           git add data
           if ! git diff --cached --quiet; then
